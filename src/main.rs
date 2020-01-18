@@ -9,7 +9,7 @@ enum Player {
     Second,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 enum Space {
     Blank,
     X,
@@ -28,6 +28,20 @@ impl Board {
             spaces,
             turn: Player::First,
         }
+    }
+
+    fn check_line(line: &[Space]) -> Option<Space> {
+        let mut last = &line[0];
+        if *last == Space::Blank {
+            return None;
+        }
+        for space in line {
+            if last != space {
+                return None;
+            }
+            last = space;
+        }
+        Some(last.clone())
     }
 }
 
@@ -49,6 +63,40 @@ impl Board {
             },
             _ => println!("That space has already been played."),
         };
+    }
+
+    fn check_full(&self) -> bool {
+        !self.spaces.contains(&Space::Blank)
+    }
+
+    fn check_win(&self) -> Option<Space> {
+        // check horizontal
+        for line in self.spaces.chunks(3) {
+            if let Some(space) = Self::check_line(line) {
+                return Some(space);
+            }
+        }
+        // check vertical
+        let vertical_indexes = vec![[0, 3, 6], [1, 4, 7], [2, 5, 8]];
+        for idxs in vertical_indexes {
+            let line: Vec<Space> = idxs.iter()
+                .map(|i| self.spaces[*i as usize].clone())
+                .collect();
+            if let Some(space) = Self::check_line(&line) {
+                return Some(space.clone());
+            }
+        }
+        // check diag
+        let diag_indexes = vec![[0, 4, 8], [2, 4, 6]];
+        for idxs in diag_indexes {
+            let line: Vec<Space> = idxs.iter()
+                .map(|i| self.spaces[*i as usize].clone())
+                .collect();
+            if let Some(space) = Self::check_line(&line) {
+                return Some(space.clone());
+            }
+        }
+        None
     }
 }
 
@@ -100,7 +148,6 @@ fn clear_terminal() {
 
 fn convert_user_input(user_input: String) -> Result<(usize, usize), String> {
     let chars: Vec<char> = user_input.chars().collect();
-    println!("{:?}", chars);
     if chars.len() != 3 {
         return Err(String::from("Must only input row and column"));
     }
@@ -114,8 +161,8 @@ fn convert_user_input(user_input: String) -> Result<(usize, usize), String> {
 
 fn main() {
     let mut board = Board::new();
-    
-    loop {
+    let mut win = false;
+    while !win {
         clear_terminal();
         println!("{}", board);
 
@@ -135,5 +182,15 @@ fn main() {
         };
 
         board.update_space(row - 1, col - 1);
+
+        if board.check_full() {
+            println!("The board is full!");
+            win = true;
+        }
+        if let Some(win_space) = board.check_win() {
+            let win_char = space_to_str(&win_space);
+            println!("{} wins!\n{}", win_char, board);
+            win = true;
+        }
     }
 }
